@@ -19,4 +19,4 @@ for y = 0, height-1 do
     end
 end
 
-gpu.drawBuffer(0, 0, logoBuffer)
+gpu.drawBuffer(0, 0, 24, 1, logoBuffer)
