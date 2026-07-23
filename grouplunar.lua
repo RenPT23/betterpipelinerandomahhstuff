@@ -8,14 +8,16 @@ local logoImage = gpu.newImage(24, 24)
 
 local i = 1
 
-for y = 1, height do
-    for x = 1, width do
+for y = 0, height-1 do
+    for x = 0, width-1 do
         local color =
             logoBuffer[i] +
             (logoBuffer[i + 1] * 256) +
             (logoBuffer[i + 2] * 65536) +
             (logoBuffer[i + 3] * 16777216)
 
+
+        print(x, y)
         logoImage.setRGB(x, y, color)
 
         i = i + 4
