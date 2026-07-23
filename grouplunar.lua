@@ -12,9 +12,9 @@ for y = 1, height do
     for x = 1, width do
         local color =
             logoBuffer[i] +
-            (logoBuffer[i + 1] << 8) +
-            (logoBuffer[i + 2] << 16) +
-            (logoBuffer[i + 3] << 24)
+            (logoBuffer[i + 1] * 256) +
+            (logoBuffer[i + 2] * 65536) +
+            (logoBuffer[i + 3] * 16777216)
 
         logoImage.setRGB(x, y, color)
 
