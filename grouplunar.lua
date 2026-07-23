@@ -6,7 +6,7 @@ local logoBuffer = {255, 0, 4, 19, 255, 0, 5, 20, 255, 0, 5, 20, 255, 0, 5, 21, 
 print(#logoBuffer)
 local logoImage = gpu.newImage(24, 24)
 
-local i = 1
+local i = 0
 
 for y = 0, height-1 do
     for x = 0, width-1 do
