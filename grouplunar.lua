@@ -19,4 +19,8 @@ for y = 0, height-1 do
     end
 end
 
-gpu.drawBuffer(0, 0, 24, 1, logoBuffer)
+local logobytebuffer = gpu.newBuffer(width * height * 4)
+
+logobytebuffer.write(table.unpack(logoBuffer))
+
+gpu.drawBuffer(0, 0, 24, 1, logobytebuffer)
