@@ -16,4 +16,4 @@ for i = 1, #logoBuffer, 4 do
     pixels[#pixels + 1] = (a * 16777216) + (r * 65536) + (g * 256) + b
 end
 
-gpu.drawBuffer(0, 0, 24, 1, table.unpack(pixels))
+gpu.drawBuffer(1, 1, 24, 1, table.unpack(pixels))
