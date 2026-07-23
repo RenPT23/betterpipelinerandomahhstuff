@@ -19,4 +19,6 @@ for y = 0, height-1 do
     end
 end
 
-logoImage.gpuDraw()
+local context = logoImage.gpuDraw()
+
+context.sync()
