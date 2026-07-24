@@ -18,7 +18,7 @@ print("image size: " .. imgW .. "x" .. imgH)
 gpu.fill()
 gpu.sync()
 
-local scale = 2 -- this needs to be modified based on the image
+local scale = 1 -- this needs to be modified based on the image
 local win = gpu.createWindow(1, 1, imgW * scale, imgH * scale)
 
 for y = 0, imgH - 3 do
