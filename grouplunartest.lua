@@ -20,9 +20,11 @@ local win = gpu.createWindow(1, 1, imgW, imgH)
 
 for y = 0, imgH - 1 do
     for x = 0, imgW - 1 do
-        local color = image.getRGB(x, y)
-        -- filledRectangle(x, y, w, h, color) — 1-indexed per the working example
-        win.filledRectangle(x + 1, y + 1, 1, 1, color)
+        if not (x == imgW - 1 and y == imgH - 1) then
+            local color = image.getRGB(x, y)
+            -- filledRectangle(x, y, w, h, color) — 1-indexed per the working example
+            win.filledRectangle(x + 1, y + 1, 1, 1, color)
+        end
     end
 end
 
