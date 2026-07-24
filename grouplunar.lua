@@ -38,13 +38,21 @@ while true do
 
     gl.glColor(255, 255, 255)
 
-    gl.glBegin(7) -- GL_QUADS
+    gl.glBegin(4) -- GL_TRIANGLES
 
+    -- Triangle 1
     gl.glTexCoord(0, 1)
     gl.glVertex(-halfSize, -halfSize, 0)
 
     gl.glTexCoord(0, 0)
     gl.glVertex(-halfSize,  halfSize, 0)
+
+    gl.glTexCoord(1, 0)
+    gl.glVertex( halfSize,  halfSize, 0)
+
+    -- Triangle 2
+    gl.glTexCoord(0, 1)
+    gl.glVertex(-halfSize, -halfSize, 0)
 
     gl.glTexCoord(1, 0)
     gl.glVertex( halfSize,  halfSize, 0)
