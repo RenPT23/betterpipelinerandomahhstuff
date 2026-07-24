@@ -24,6 +24,10 @@ for i = 1, #c, 2 do
     glc[c[i]] = c[i + 1]
 end
 
+for k, v in pairs(glc) do
+    print(tostring(k), tostring(v))
+end
+
 gl.glEnable(3553)
 
 -- quad distance from camera and FOV-matched half-extent so it fills the screen
