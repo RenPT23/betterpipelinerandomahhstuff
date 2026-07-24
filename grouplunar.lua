@@ -1,3 +1,5 @@
+-- This script may only be copied with straight permission from Group Lunar (RenPT23 and The_Yellow_Spy)
+
 -- Draws grouplunar.png (24x24) pixel-by-pixel using filledRectangle
 local gpu = peripheral.wrap("top")
 gpu.refreshSize()
