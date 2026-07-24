@@ -39,7 +39,7 @@ while true do
 
     gl.glColor(255, 255, 255)
 
-    gl.glBegin(glc.GL_TRIANGLES)
+    gl.glBegin(4)
 
     -- Triangle 1
     gl.glTexCoord(0, 1)
