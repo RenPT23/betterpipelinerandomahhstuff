@@ -2,7 +2,7 @@ local gpu = peripheral.wrap("top")
 gpu.refreshSize()
 gpu.setSize(16)
 
-local gl = gpu.createWindow3D(0, 0, 72, 72)
+local gl = gpu.createWindow3D(0, 0, 48, 48)
 
 gl.glFrustum(90, 1, 4)
 gl.glDirLight(0, 0, -1)
