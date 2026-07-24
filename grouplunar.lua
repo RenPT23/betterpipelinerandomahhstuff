@@ -29,7 +29,7 @@ for i = 1, #c, 2 do
     glc[c[i]] = c[i + 1]
 end
 
-gl.glEnable(glc.GL_TEXTURE_2D)
+gl.glEnable(3553)
 
 while true do
     gl.clear()
