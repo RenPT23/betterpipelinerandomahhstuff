@@ -42,28 +42,26 @@ while true do
 
     gl.glColor(255, 255, 255)
 
-    local texW, texH = 24, 24 -- image is 24x24, NOT the window size
-
     gl.glBegin(4) -- GL_TRIANGLES
 
     -- Triangle 1
-    gl.glTexCoord(0, texH)
+    gl.glTexCoord(0, 0)
     gl.glVertex(-halfSize, -halfSize, 0)
 
-    gl.glTexCoord(0, 0)
+    gl.glTexCoord(0, 1)
     gl.glVertex(-halfSize,  halfSize, 0)
 
-    gl.glTexCoord(texW, 0)
+    gl.glTexCoord(1, 1)
     gl.glVertex( halfSize,  halfSize, 0)
 
     -- Triangle 2
-    gl.glTexCoord(0, texH)
+    gl.glTexCoord(0, 0)
     gl.glVertex(-halfSize, -halfSize, 0)
 
-    gl.glTexCoord(texW, 0)
+    gl.glTexCoord(1, 1)
     gl.glVertex( halfSize,  halfSize, 0)
 
-    gl.glTexCoord(texW, texH)
+    gl.glTexCoord(1, 0)
     gl.glVertex( halfSize, -halfSize, 0)
 
     gl.glEnd()
