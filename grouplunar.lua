@@ -16,7 +16,8 @@ print("image size: " .. imgW .. "x" .. imgH)
 gpu.fill()
 gpu.sync()
 
-local win = gpu.createWindow(1, 1, imgW, imgH)
+local scale = 2
+local win = gpu.createWindow(1, 1, imgW * scale, imgH * scale)
 
 for y = 0, imgH - 1 do
     local sampleY = y
@@ -30,7 +31,7 @@ for y = 0, imgH - 1 do
         end
         local color = image.getRGB(sampleX, sampleY)
         -- filledRectangle(x, y, w, h, color) — 1-indexed per the working example
-        win.filledRectangle(x + 1, y + 1, 1, 1, color)
+        win.filledRectangle((x * scale) + 1, (y * scale) + 1, scale, scale, color)
     end
 end
 
