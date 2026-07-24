@@ -1,50 +1,34 @@
+-- Draws grouplunar.png (24x24) pixel-by-pixel using filledRectangle
 local gpu = peripheral.wrap("top")
 gpu.refreshSize()
 gpu.setSize(16)
-local gl = gpu.createWindow3D(0, 0, 48, 48)
-gl.glFrustum(90, 1, 4)
-gl.glDirLight(0, 0, -1)
+
 local f = io.open("grouplunar.png", "rb")
-local bytes = {}
-local b = f._handle.read(1)
-while b do
-    bytes[#bytes + 1] = ("<I1"):unpack(b)
-    b = f._handle.read(1)
-end
+local data = f:read("*a")
 f:close()
+
+local bytes = { data:byte(1, #data) }
 local image = gpu.decodeImage(table.unpack(bytes))
-local tex = gl.glGenTextures()
-gl.glBindTexture(tex)
-gl.glTexImage(image.ref())
-local glc = {}
-local c = { gl.getConstants() }
-for i = 1, #c, 2 do
-    glc[c[i]] = c[i + 1]
+
+local imgW, imgH = image.getWidth(), image.getHeight()
+print("image size: " .. imgW .. "x" .. imgH)
+
+gpu.fill()
+gpu.sync()
+
+local win = gpu.createWindow(1, 1, imgW, imgH)
+
+for y = 0, imgH - 1 do
+    local sampleY = y
+    if y == imgH - 1 then
+        sampleY = 0 -- never call getRGB on the last row; reuse row 0's pixel data instead
+    end
+    for x = 0, imgW - 1 do
+        local color = image.getRGB(x, sampleY)
+        -- filledRectangle(x, y, w, h, color) — 1-indexed per the working example
+        win.filledRectangle(x + 1, y + 1, 1, 1, color)
+    end
 end
-gl.glEnable(3553)
-while true do
-    gl.clear()
-    gl.glLoadIdentity()
-    gl.glTranslate(0, 0, 3)
-    gl.glColor(255, 255, 255)
-    gl.glBegin(4)
-    -- Triangle 1
-    gl.glTexCoord(0, 0)
-    gl.glVertex(-3, -3, 0)
-    gl.glTexCoord(0, 1)
-    gl.glVertex(-3, 3, 0)
-    gl.glTexCoord(1, 1)
-    gl.glVertex(3, 3, 0)
-    -- Triangle 2
-    gl.glTexCoord(0, 0)
-    gl.glVertex(-3, -3, 0)
-    gl.glTexCoord(1, 1)
-    gl.glVertex(3, 3, 0)
-    gl.glTexCoord(1, 0)
-    gl.glVertex(3, -3, 0)
-    gl.glEnd()
-    gl.render()
-    gl.sync()
-    gpu.sync()
-    sleep(0)
-end
+
+win.sync()
+gpu.sync()
