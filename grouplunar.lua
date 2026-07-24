@@ -1,6 +1,6 @@
 local gpu = peripheral.wrap("top")
 gpu.refreshSize()
-gpu.setSize(8)
+gpu.setSize(16)
 
 local gl = gpu.createWindow3D(1, 1, 24, 24)
 
