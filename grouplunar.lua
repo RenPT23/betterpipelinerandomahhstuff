@@ -2,21 +2,16 @@ local gpu = peripheral.wrap("top")
 gpu.refreshSize()
 gpu.setSize(16)
 
-local gl = gpu.createWindow3D(1, 1, 24, 24)
+local gl = gpu.createWindow3D(0, 0, 48, 48)
 
 gl.glFrustum(90, 1, 4)
 gl.glDirLight(0, 0, -1)
 
 local f = io.open("grouplunar.png", "rb")
-local bytes = {}
-
-local b = f._handle.read(1)
-while b do
-    bytes[#bytes + 1] = ("<I1"):unpack(b)
-    b = f._handle.read(1)
-end
+local data = f:read("*a")
 f:close()
 
+local bytes = { data:byte(1, #data) }
 local image = gpu.decodeImage(table.unpack(bytes))
 
 local tex = gl.glGenTextures()
@@ -31,35 +26,31 @@ end
 
 gl.glEnable(3553)
 
+-- quad distance from camera and FOV-matched half-extent so it fills the screen
+local dist = 3
+local halfSize = dist * math.tan(math.rad(90 / 2)) -- 90 fov -> tan(45) = 1, so halfSize = dist
+
 while true do
     gl.clear()
 
     gl.glLoadIdentity()
-    gl.glTranslate(0, 0, 3)
+    gl.glTranslate(0, 0, dist)
 
     gl.glColor(255, 255, 255)
 
-    gl.glBegin(4)
+    gl.glBegin(7) -- GL_QUADS
 
-    -- Triangle 1
     gl.glTexCoord(0, 1)
-    gl.glVertex(-1.5, -1.5, 0)
+    gl.glVertex(-halfSize, -halfSize, 0)
 
     gl.glTexCoord(0, 0)
-    gl.glVertex(-1.5,  1.5, 0)
+    gl.glVertex(-halfSize,  halfSize, 0)
 
     gl.glTexCoord(1, 0)
-    gl.glVertex( 1.5,  1.5, 0)
-
-    -- Triangle 2
-    gl.glTexCoord(0, 1)
-    gl.glVertex(-1.5, -1.5, 0)
-
-    gl.glTexCoord(1, 0)
-    gl.glVertex( 1.5,  1.5, 0)
+    gl.glVertex( halfSize,  halfSize, 0)
 
     gl.glTexCoord(1, 1)
-    gl.glVertex( 1.5, -1.5, 0)
+    gl.glVertex( halfSize, -halfSize, 0)
 
     gl.glEnd()
 
