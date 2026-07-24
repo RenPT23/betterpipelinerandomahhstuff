@@ -24,6 +24,7 @@ for y = 0, imgH - 1 do
         sampleY = 0 -- never call getRGB on the last row; reuse row 0's pixel data instead
     end
     for x = 0, imgW - 1 do
+        print(x, sampleY)
         local color = image.getRGB(x, sampleY)
         -- filledRectangle(x, y, w, h, color) — 1-indexed per the working example
         win.filledRectangle(x + 1, y + 1, 1, 1, color)
