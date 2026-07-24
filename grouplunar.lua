@@ -21,13 +21,13 @@ local c = { gl.getConstants() }
 for i = 1, #c, 2 do
     glc[c[i]] = c[i + 1]
 end
-gl.glEnable(glc.GL_TEXTURE_2D)
+gl.glEnable(3553)
 while true do
     gl.clear()
     gl.glLoadIdentity()
     gl.glTranslate(0, 0, 3)
     gl.glColor(255, 255, 255)
-    gl.glBegin(glc.GL_TRIANGLES)
+    gl.glBegin(4)
     -- Triangle 1
     gl.glTexCoord(0, 0)
     gl.glVertex(-3, -3, 0)
