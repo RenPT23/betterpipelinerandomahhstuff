@@ -21,9 +21,9 @@ gpu.sync()
 local scale = 1 -- this needs to be modified based on the image
 local win = gpu.createWindow(1, 1, imgW * scale - 2, imgH * scale - 2)
 
-for y = 0, imgH - 3 do
+for y = -1, imgH - 2 do
     local sampleY = y
-    for x = 0, imgW - 3 do
+    for x = -1, imgW - 2 do
         local sampleX = x
         local color = image.getRGB(sampleX, sampleY)
         -- filledRectangle(x, y, w, h, color) — 1-indexed per the working example
