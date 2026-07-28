@@ -4,15 +4,26 @@ if not speaker then
     error("No speaker found")
 end
 
+
+if #arg < 2 then
+    error("Usage: wavplayer <base_url> <part1.wav> <part2.wav> ...")
+end
+
+
+local base_url = arg[1]
+
+
 local function u16(data, pos)
     local a, b = string.byte(data, pos, pos + 1)
     return a + b * 256
 end
 
+
 local function u32(data, pos)
     local a, b, c, d = string.byte(data, pos, pos + 3)
     return a + b * 256 + c * 65536 + d * 16777216
 end
+
 
 local function s16(data, pos)
     local value = u16(data, pos)
@@ -24,10 +35,13 @@ local function s16(data, pos)
     return value
 end
 
+
 local function find_chunk(data, target)
+
     local pos = 13
 
     while pos <= #data do
+
         local id = data:sub(pos, pos + 3)
         local size = u32(data, pos + 4)
 
@@ -37,43 +51,47 @@ local function find_chunk(data, target)
 
         pos = pos + 8 + size
 
-        -- RIFF chunks are padded to even sizes
         if size % 2 == 1 then
             pos = pos + 1
         end
     end
 
-    return nil
 end
 
 
-local function decode_wav(path)
+
+local function play_wav(path)
 
     local file = fs.open(path, "rb")
+
     if not file then
         error("Cannot open "..path)
     end
 
+
     local wav = file.readAll()
+
     file.close()
 
 
-    if wav:sub(1,4) ~= "RIFF" or wav:sub(9,12) ~= "WAVE" then
-        error("Not a WAV file")
+    if wav:sub(1,4) ~= "RIFF"
+    or wav:sub(9,12) ~= "WAVE" then
+        error("Invalid WAV")
     end
 
 
     local fmt_pos = find_chunk(wav, "fmt ")
     local data_pos, data_size = find_chunk(wav, "data")
 
+
     if not fmt_pos or not data_pos then
-        error("Invalid WAV")
+        error("Missing chunks")
     end
 
 
     local audio_format = u16(wav, fmt_pos + 8)
     local channels = u16(wav, fmt_pos + 10)
-    local sample_rate = u32(wav, fmt_pos + 12)
+    local rate = u32(wav, fmt_pos + 12)
     local bits = u16(wav, fmt_pos + 22)
 
 
@@ -85,12 +103,12 @@ local function decode_wav(path)
         error("Only mono supported")
     end
 
-    if sample_rate ~= 48000 then
+    if rate ~= 48000 then
         error("Only 48000Hz supported")
     end
 
     if bits ~= 8 and bits ~= 16 then
-        error("Only 8-bit PCM or S16LE supported")
+        error("Only 8/16-bit PCM supported")
     end
 
 
@@ -101,43 +119,82 @@ local function decode_wav(path)
 
     if bits == 8 then
 
-        -- WAV 8-bit PCM is unsigned
-        for i = 1, #raw do
-            samples[#samples + 1] = string.byte(raw, i) - 128
+        for i = 1,#raw do
+            samples[#samples+1] =
+                string.byte(raw,i)-128
         end
 
 
     elseif bits == 16 then
 
-        -- PCM S16LE
-        for i = 1, #raw, 2 do
-            local sample = s16(raw, i)
+        for i = 1,#raw,2 do
 
-            -- 16-bit -> 8-bit
-            samples[#samples + 1] = math.floor(sample / 256)
+            samples[#samples+1] =
+                math.floor(s16(raw,i)/256)
+
         end
     end
 
 
-    return samples
+
+    local chunk_size = 128 * 1024
+
+
+    for i = 1,#samples,chunk_size do
+
+        local chunk = {}
+
+        for j = i, math.min(i+chunk_size-1,#samples) do
+            chunk[#chunk+1] = samples[j]
+        end
+
+
+        while not speaker.playAudio(chunk) do
+            os.pullEvent("speaker_audio_empty")
+        end
+    end
+
 end
 
 
-local samples = decode_wav("audio.wav")
+
+for i = 2,#arg do
+
+    local filename = arg[i]
+
+    local url = base_url .. filename
+
+    local local_file = "/.wavstream.wav"
 
 
-local chunk_size = 128 * 1024
+    print("Downloading "..filename)
 
-for i = 1, #samples, chunk_size do
 
-    local chunk = {}
+    fs.delete(local_file)
 
-    for j = i, math.min(i + chunk_size - 1, #samples) do
-        chunk[#chunk + 1] = samples[j]
+
+    local ok = shell.run(
+        "wget",
+        url,
+        local_file
+    )
+
+
+    if not ok then
+        error("Download failed: "..url)
     end
 
 
-    while not speaker.playAudio(chunk) do
-        os.pullEvent("speaker_audio_empty")
-    end
+    print("Playing "..filename)
+
+    play_wav(local_file)
+
+
+    fs.delete(local_file)
+
+    print("Deleted "..filename)
+
 end
+
+
+print("Finished")
