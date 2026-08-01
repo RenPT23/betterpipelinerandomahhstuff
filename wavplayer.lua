@@ -1,3 +1,5 @@
+-- Copyright(C) RenPT23, 2026 All Rights Reserved
+
 local speaker = peripheral.find("speaker")
 
 if not speaker then
