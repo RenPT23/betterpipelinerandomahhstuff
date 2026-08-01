@@ -1,3 +1,5 @@
+-- Copyright(C) RenPT23, 2026 All Rights Reserved
+
 -- lhs.lua - Lunar Hack Suite
 -- Self-contained CC:Tweaked utility for modem channel mapping/tracing.
 -- Uses peripheral.find("modem") automatically. No side input required.
