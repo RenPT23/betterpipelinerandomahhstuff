@@ -1,3 +1,5 @@
+-- Copyright(C) RenPT23, 2026 All Rights Reserved
+
 local songDir = "songs"
 
 if not fs.exists(songDir) then
