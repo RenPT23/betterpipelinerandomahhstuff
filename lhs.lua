@@ -3,7 +3,7 @@
 -- Uses peripheral.find("modem") automatically. No side input required.
 
 local SUITE_NAME = "Lunar Hack Suite"
-local VERSION = "1.0"
+local VERSION = "1.2"
 
 -- 35 reserved channels: 65500..65534
 local RESERVED_START = 65500
@@ -52,6 +52,7 @@ local function short(v, maxLen)
   maxLen = maxLen or 80
   local t = type(v)
   local s
+
   if t == "string" then
     s = v
   elseif t == "number" or t == "boolean" then
@@ -68,6 +69,15 @@ local function short(v, maxLen)
   return s
 end
 
+local function fit(v, maxLen)
+  local s = tostring(v or "")
+  s = s:gsub("\n", " ")
+  if #s > maxLen then
+    return s:sub(1, math.max(0, maxLen - 3)) .. "..."
+  end
+  return s
+end
+
 local function tonumber_safe(v)
   local n = tonumber((v or ""):match("^%s*(.-)%s*$"))
   return n
@@ -80,12 +90,15 @@ local function promptNumber(label, default, minV, maxV)
     else
       write(label .. ": ")
     end
+
     local s = read()
     if s == "" and default ~= nil then return default end
+
     local n = tonumber_safe(s)
     if n and (not minV or n >= minV) and (not maxV or n <= maxV) then
       return math.floor(n)
     end
+
     print("Invalid number.")
   end
 end
@@ -96,6 +109,7 @@ local function promptText(label, default)
   else
     write(label .. ": ")
   end
+
   local s = read()
   if s == "" and default ~= nil then return default end
   return s
@@ -122,27 +136,27 @@ local function safeOpen(ch)
   return pcall(modem.open, ch)
 end
 
-local function openRange(a, b)
-  for ch = a, b do
-    safeOpen(ch)
-  end
-end
-
-local function closeRange(a, b)
-  for ch = a, b do
-    pcall(modem.close, ch)
-  end
-end
-
 local function packetRow(ch, info)
   local name = KNOWN_RESERVED[ch] or ("channel-" .. ch)
-  local seen = info.lastSeen or "-"
-  local cnt = info.count or 0
   local reply = info.lastReplyChannel ~= nil and tostring(info.lastReplyChannel) or "-"
   local msg = info.lastPreview or "-"
+
   print(("%5d  %-14s  %-7s  %-8d  %-8s  %s"):format(
-    ch, name, info.active and "active" or "silent", cnt, reply, msg
+    ch, name, info.active and "active" or "silent", info.count or 0, reply, msg
   ))
+end
+
+local function printActiveSummary(channels, info)
+  local printed = false
+  for _, ch in ipairs(channels) do
+    if info[ch] and info[ch].count > 0 then
+      packetRow(ch, info[ch])
+      printed = true
+    end
+  end
+  if not printed then
+    print("No packets were received.")
+  end
 end
 
 local function monitorChannels(channels, duration, title, allowKeyExit)
@@ -171,7 +185,7 @@ local function monitorChannels(channels, duration, title, allowKeyExit)
   print(title)
   print(("Modem side: %s | Type: %s"):format(modemSide, tostring(modem.getType and modem.getType() or "modem")))
   print(("Watching %d channel(s) for %.1f second(s)."):format(#channels, duration))
-  print("Press Q to stop early." )
+  print("Press Q to stop early.")
   line()
   print(" CH    NAME            STATE    PACKETS   REPLY     LAST PACKET")
   line()
@@ -229,9 +243,8 @@ local function monitorChannels(channels, duration, title, allowKeyExit)
   print(" CH    NAME            STATE    PACKETS   REPLY     LAST PACKET")
   line()
 
-  for _, ch in ipairs(channels) do
-    packetRow(ch, info[ch])
-  end
+  -- Only show channels that actually responded.
+  printActiveSummary(channels, info)
 
   line()
   pause("Done. Press Enter to return to menu...")
@@ -244,6 +257,7 @@ local function mmap()
   line()
   print("This scans channels in the non-reserved range and logs packets it can see.")
   print(("Range: %d..%d"):format(NON_RESERVED_MIN, NON_RESERVED_MAX))
+  print("Summary shows only channels that actually responded.")
   line()
 
   local startCh = promptNumber("Start channel", 0, NON_RESERVED_MIN, NON_RESERVED_MAX)
@@ -253,6 +267,7 @@ local function mmap()
   end
 
   local duration = promptNumber("Listen duration (seconds)", 20, 1, 3600)
+
   local channels = {}
   for ch = startCh, endCh do
     channels[#channels + 1] = ch
@@ -267,9 +282,11 @@ local function pmapt()
   line()
   print("Reserved range: 65500..65534 (35 channels)")
   print("Known labels are shown when available; otherwise channels are generic.")
+  print("Summary shows only channels that actually responded.")
   line()
 
   local duration = promptNumber("Listen duration (seconds)", 20, 1, 3600)
+
   local channels = {}
   for ch = RESERVED_START, RESERVED_END do
     channels[#channels + 1] = ch
@@ -288,18 +305,7 @@ local function traceOne(channel, label, reserved)
   safeCloseAll()
   safeOpen(channel)
 
-  local doSend = yesNo("Send a test packet before listening?", false)
-  if doSend then
-    local replyChannel = promptNumber("Reply channel", 0, 0, 65535)
-    local payload = promptText("Payload", "hello from LHS")
-    local ok, err = pcall(modem.transmit, channel, replyChannel, payload)
-    if ok then
-      print("Sent.")
-    else
-      print("Send failed: " .. tostring(err))
-    end
-  end
-
+  local defaultReplyChannel = promptNumber("Default reply channel for sent packets", 0, 0, 65535)
   local duration = promptNumber("Listen duration (seconds)", 30, 1, 3600)
 
   local info = {
@@ -313,46 +319,228 @@ local function traceOne(channel, label, reserved)
     lastDistance = nil,
   }
 
-  clear()
-  print(SUITE_NAME .. " v" .. VERSION)
-  line()
-  print(label)
-  print(("Watching channel %d for %.1f second(s)."):format(channel, duration))
-  print("Press Q to stop early.")
-  line()
-  print(" TIME     SIDE         REPLY     DIST      MESSAGE")
-  line()
-
+  local log = {}
+  local input = ""
+  local cursor = 1
+  local done = false
   local timer = os.startTimer(duration)
-  while true do
+  local lastStatus = "Type a message and press Enter to send it live."
+  local replyChannel = defaultReplyChannel
+
+  local function addLog(entry)
+    log[#log + 1] = entry
+    if #log > 200 then
+      table.remove(log, 1)
+    end
+  end
+
+  local function setStatus(msg)
+    lastStatus = msg or ""
+  end
+
+  local function redraw()
+    local w, h = term.getSize()
+
+    local headerLines = 4
+    local footerLines = 3
+    local logTop = headerLines + 2
+    local logBottom = h - footerLines
+    local visibleLines = math.max(0, logBottom - logTop + 1)
+
+    term.setCursorBlink(false)
+    term.clear()
+    term.setCursorPos(1, 1)
+
+    if term.isColor() then
+      term.setTextColor(colors.cyan)
+    end
+    center(SUITE_NAME .. " v" .. VERSION)
+    if term.isColor() then
+      term.setTextColor(colors.white)
+    end
+
+    center(("Channel: %d | Reply: %d | Time: %s"):format(channel, replyChannel, now()))
+    center(("Listening for %.1f second(s) | Q or /quit to exit"):format(duration))
+
+    term.setCursorPos(1, 4)
+    line()
+
+    term.setCursorPos(1, logTop - 1)
+    print(" Incoming / outgoing packets")
+
+    local startIndex = math.max(1, #log - visibleLines + 1)
+    for i = 1, visibleLines do
+      local y = logTop + i - 1
+      term.setCursorPos(1, y)
+      term.clearLine()
+      local entry = log[startIndex + i - 1]
+      if entry then
+        print(fit(entry, w))
+      end
+    end
+
+    term.setCursorPos(1, h - 2)
+    line()
+
+    term.setCursorPos(1, h - 1)
+    term.clearLine()
+    write("> " .. input)
+
+    local cursorX = math.min(w, 3 + cursor - 1)
+    term.setCursorPos(cursorX, h - 1)
+    term.setCursorBlink(true)
+
+    term.setCursorPos(1, h)
+    term.clearLine()
+    write(fit(lastStatus, w))
+  end
+
+  local function sendCurrent()
+    local msg = input
+    if msg == "" then
+      setStatus("Nothing to send.")
+      return
+    end
+
+    if msg == "/quit" or msg == "/q" then
+      done = true
+      return
+    end
+
+    local parsedReply, parsedMsg = msg:match("^/reply%s+(%d+)%s+(.+)$")
+    if parsedReply and parsedMsg then
+      replyChannel = tonumber(parsedReply) or replyChannel
+      msg = parsedMsg
+      setStatus(("Reply channel set to %d. Sent message."):format(replyChannel))
+    elseif msg:match("^/reply%s+%d+$") then
+      replyChannel = tonumber(msg:match("^/reply%s+(%d+)$")) or replyChannel
+      setStatus(("Reply channel set to %d."):format(replyChannel))
+      input = ""
+      cursor = 1
+      redraw()
+      return
+    elseif msg == "/clear" then
+      log = {}
+      setStatus("Log cleared.")
+      input = ""
+      cursor = 1
+      redraw()
+      return
+    end
+
+    local ok, err = pcall(modem.transmit, channel, replyChannel, msg)
+    if ok then
+      addLog(("[%s] OUT  reply=%d  %s"):format(now(), replyChannel, short(msg, 100)))
+      setStatus(("Sent to %d."):format(channel))
+    else
+      addLog(("[%s] ERR  %s"):format(now(), tostring(err)))
+      setStatus("Send failed.")
+    end
+
+    input = ""
+    cursor = 1
+  end
+
+  local function insertText(s)
+    if not s or s == "" then return end
+    local left = input:sub(1, cursor - 1)
+    local right = input:sub(cursor)
+    input = left .. s .. right
+    cursor = cursor + #s
+  end
+
+  local function backspace()
+    if cursor <= 1 then return end
+    input = input:sub(1, cursor - 2) .. input:sub(cursor)
+    cursor = cursor - 1
+  end
+
+  local function deleteChar()
+    if cursor > #input then return end
+    input = input:sub(1, cursor - 1) .. input:sub(cursor + 1)
+  end
+
+  redraw()
+
+  while not done do
     local e = { os.pullEvent() }
 
     if e[1] == "modem_message" and e[3] == channel then
-      local side, replyChannel, message, distance = e[2], e[4], e[5], e[6]
+      local side, reply, message, distance = e[2], e[4], e[5], e[6]
       info.count = info.count + 1
       info.active = true
       info.lastSeen = now()
-      info.lastReplyChannel = replyChannel
+      info.lastReplyChannel = reply
       info.lastPreview = short(message, 120)
       info.lastSide = side
       info.lastDistance = distance
       if not info.firstSeen then info.firstSeen = now() end
 
-      term.setCursorPos(1, 8)
-      term.clearLine()
-      print(("[%s]  %s  %s  %s  %s"):format(
+      addLog(("[%s] IN   side=%s reply=%s dist=%s  %s"):format(
         now(),
         tostring(side),
-        tostring(replyChannel),
+        tostring(reply),
         tostring(distance),
-        short(message, 120)
+        short(message, 100)
       ))
+      setStatus(("Packet received on %d."):format(channel))
+      redraw()
 
     elseif e[1] == "timer" and e[2] == timer then
-      break
+      done = true
+      setStatus("Time expired.")
 
-    elseif e[1] == "key" and e[2] == keys.q then
-      break
+    elseif e[1] == "char" then
+      insertText(e[2])
+      redraw()
+
+    elseif e[1] == "paste" then
+      insertText(e[2])
+      redraw()
+
+    elseif e[1] == "key" then
+      local key = e[2]
+
+      if key == keys.backspace then
+        backspace()
+        redraw()
+
+      elseif key == keys.delete then
+        deleteChar()
+        redraw()
+
+      elseif key == keys.left then
+        if cursor > 1 then
+          cursor = cursor - 1
+          redraw()
+        end
+
+      elseif key == keys.right then
+        if cursor <= #input then
+          cursor = cursor + 1
+          redraw()
+        end
+
+      elseif key == keys.home then
+        cursor = 1
+        redraw()
+
+      elseif key == keys["end"] then
+        cursor = #input + 1
+        redraw()
+
+      elseif key == keys.enter then
+        sendCurrent()
+        redraw()
+
+      elseif key == keys.q and input == "" then
+        done = true
+      elseif key == keys.q and (input == "/q" or input == "/quit") then
+        done = true
+      end
+
+    elseif e[1] == "term_resize" then
+      redraw()
     end
   end
 
